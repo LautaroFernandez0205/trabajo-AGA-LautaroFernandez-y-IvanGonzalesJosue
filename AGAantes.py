@@ -34,14 +34,15 @@ st.title("📶 Optimización de Red Wi-Fi del Campus")
 st.subheader("📌 Enunciado del problema")
 
 st.write("""
-La universidad busca maximizar la cobertura de su red Wi-Fi mediante la instalación de:
+La universidad busca maximizar la cantidad de usuarios cubiertos por la red Wi-Fi
+instalando diferentes equipos de comunicación bajo restricciones de recursos.
+
+El objetivo es encontrar la combinación óptima de:
 
 - Antenas Tipo A  
 - Antenas Tipo B  
 - Repetidores  
 - Baterías  
-
-Cada equipo consume recursos y aporta cobertura medida en usuarios cubiertos.
 """)
 
 # ==========================
@@ -52,33 +53,19 @@ st.subheader("⚙️ Restricciones del sistema")
 
 st.markdown("""
 - Presupuesto máximo: **$7000**
-- Energía máxima: **220 W**
-- Espacio máximo: **300 m²**
+- Energía máxima disponible: **220 W**
+- Espacio máximo disponible: **300 m²**
 - Mínimo de baterías: **5**
-- Mínimo de antenas: **2**
-- Restricción repetidores (según consigna): **-4A -4B + R ≤ 0**
-- Variables enteras
+- Mínimo de antenas (A + B): **2**
+- Máximo de repetidores por antena instalada: **4**
+- Todas las variables son enteras
 """)
 
 # ==========================
-# DATOS BASE
+# PARÁMETRO NUEVO
 # ==========================
 
-st.subheader("📋 Equipos")
-
-datos_base = pd.DataFrame({
-    "Equipo": ["Antena A", "Antena B", "Repetidor", "Batería"],
-    "Usuarios cubiertos": [120, 200, 80, 20],
-    "Precio": [300, 500, 150, 100],
-    "Energía (W)": [8, 15, 4, 2],
-    "Espacio (m²)": [10, 12, 1, 1]
-})
-
-datos = st.data_editor(datos_base, use_container_width=True, num_rows="fixed")
-
-# ==========================
-# PARÁMETROS
-# ==========================
+st.subheader("⚙️ Parámetros del modelo")
 
 col1, col2 = st.columns(2)
 
@@ -88,6 +75,28 @@ espacio_max = col1.number_input("Espacio (m²)", value=300)
 
 min_baterias = col2.number_input("Mínimo baterías", value=5)
 min_antenas = col2.number_input("Mínimo antenas", value=2)
+
+max_repetidores_por_antena = col2.number_input(
+    "Máximo repetidores por antena",
+    value=4,
+    step=1
+)
+
+# ==========================
+# DATOS
+# ==========================
+
+st.subheader("📋 Equipos")
+
+datos = pd.DataFrame({
+    "Equipo": ["Antena A", "Antena B", "Repetidor", "Batería"],
+    "Usuarios cubiertos": [120, 200, 80, 20],
+    "Precio": [300, 500, 150, 100],
+    "Energía (W)": [8, 15, 4, 2],
+    "Espacio (m²)": [10, 12, 1, 1]
+})
+
+datos = st.data_editor(datos, use_container_width=True, num_rows="fixed")
 
 # ==========================
 # EXTRACCIÓN
@@ -125,9 +134,12 @@ if st.button("🚀 Ejecutar Optimización"):
         [precio_A, precio_B, precio_R, precio_Bat],
         [energia_A, energia_B, energia_R, energia_Bat],
         [espacio_A, espacio_B, espacio_R, espacio_Bat],
-        [0, 0, 0, 1],
-        [1, 1, 0, 0],
-        [-4, -4, 1, 0]   # TU RESTRICCIÓN TAL CUAL LA PUSISTE
+        [0, 0, 0, 1],  # baterías mínimas
+        [1, 1, 0, 0],  # antenas mínimas
+        [-max_repetidores_por_antena,
+         -max_repetidores_por_antena,
+          1,
+          0]
     ]
 
     bu = [
@@ -176,6 +188,23 @@ if st.button("🚀 Ejecutar Optimización"):
         col2.metric("Costo ($)", costo)
         col3.metric("Energía (W)", energia)
         col4.metric("Espacio (m²)", espacio)
+
+        st.subheader("📦 Cantidades óptimas")
+
+        df_res = pd.DataFrame({
+            "Equipo": ["Antena A", "Antena B", "Repetidor", "Batería"],
+            "Cantidad": [A_ant, B_ant, R_rep, Bat]
+        })
+
+        st.dataframe(df_res, use_container_width=True)
+
+        # ==========================
+        # GRÁFICO (RECUPERADO)
+        # ==========================
+
+        st.subheader("📊 Gráfico de solución")
+
+        st.bar_chart(df_res.set_index("Equipo"))
 
         st.success("Optimización completada correctamente")
 
