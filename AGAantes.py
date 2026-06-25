@@ -28,32 +28,32 @@ h1, h2, h3, h4, h5, h6, p, label, div {
 st.title("📶 Optimización de Red Wi-Fi del Campus")
 
 # ==========================
-# PROBLEMA + CONSIGNA
+# RESET DE ESTADO
+# ==========================
+
+if "reset" not in st.session_state:
+    st.session_state.reset = False
+
+def reset_values():
+    st.session_state.reset = True
+
+# ==========================
+# PROBLEMA
 # ==========================
 
 st.subheader("📌 Problema")
 
 st.write("""
-La universidad desea optimizar la instalación de equipos Wi-Fi para maximizar la cobertura total del campus.
-
-Se dispone de los siguientes recursos:
-
-- Presupuesto máximo: $7000
-- Energía máxima disponible: 220 unidades
-- Espacio máximo disponible: 300 m²
-- Mínimo de baterías: 5
-- Mínimo de antenas (A + B): 2
-
-El objetivo es maximizar la cantidad de usuarios cubiertos por la red.
+Se busca maximizar la cantidad de usuarios cubiertos por una red Wi-Fi
+instalando antenas, repetidores y baterías bajo restricciones de presupuesto,
+energía y espacio.
 """)
 
 # ==========================
-# DATOS DEL PROBLEMA (FIJOS BASE)
+# DATOS BASE
 # ==========================
 
-st.subheader("📊 Datos del problema")
-
-datos_base = pd.DataFrame({
+default_data = pd.DataFrame({
     "Equipo": [
         "Antena Tipo A",
         "Antena Tipo B",
@@ -62,68 +62,86 @@ datos_base = pd.DataFrame({
     ],
     "Usuarios cubiertos": [120, 200, 80, 20],
     "Precio ($)": [300, 500, 150, 100],
-    "Energía": [8, 15, 4, 2],
+    "Energía (W)": [8, 15, 4, 2],
     "Espacio (m²)": [10, 12, 1, 1]
 })
-
-datos = st.data_editor(datos_base, use_container_width=True, num_rows="fixed")
 
 # ==========================
 # PARÁMETROS
 # ==========================
 
-st.subheader("⚙️ Parámetros del sistema")
+st.subheader("⚙️ Parámetros")
 
 col1, col2 = st.columns(2)
 
 with col1:
-    presupuesto = st.number_input("Presupuesto máximo ($)", value=7000, step=100)
-    energia_max = st.number_input("Energía máxima", value=220, step=5)
-    espacio_max = st.number_input("Espacio máximo (m²)", value=300, step=10)
+    presupuesto = st.number_input("Presupuesto ($)", value=7000)
+    energia_max = st.number_input("Energía máxima (W)", value=220)
+    espacio_max = st.number_input("Espacio máximo (m²)", value=300)
 
 with col2:
-    min_baterias = st.number_input("Mínimo de baterías", value=5, step=1)
-    min_antenas = st.number_input("Mínimo de antenas", value=2, step=1)
+    min_baterias = st.number_input("Mínimo baterías", value=5)
+    min_antenas = st.number_input("Mínimo antenas", value=2)
 
 # ==========================
-# EXTRACCIÓN DE DATOS
+# TABLA EDITABLE
+# ==========================
+
+st.subheader("📋 Equipos")
+
+datos = st.data_editor(default_data, use_container_width=True, num_rows="fixed")
+
+# ==========================
+# EXTRACCIÓN
 # ==========================
 
 cov_A = datos.iloc[0]["Usuarios cubiertos"]
 precio_A = datos.iloc[0]["Precio ($)"]
-energia_A = datos.iloc[0]["Energía"]
+energia_A = datos.iloc[0]["Energía (W)"]
 espacio_A = datos.iloc[0]["Espacio (m²)"]
 
 cov_B = datos.iloc[1]["Usuarios cubiertos"]
 precio_B = datos.iloc[1]["Precio ($)"]
-energia_B = datos.iloc[1]["Energía"]
+energia_B = datos.iloc[1]["Energía (W)"]
 espacio_B = datos.iloc[1]["Espacio (m²)"]
 
 cov_R = datos.iloc[2]["Usuarios cubiertos"]
 precio_R = datos.iloc[2]["Precio ($)"]
-energia_R = datos.iloc[2]["Energía"]
+energia_R = datos.iloc[2]["Energía (W)"]
 espacio_R = datos.iloc[2]["Espacio (m²)"]
 
 cov_Bat = datos.iloc[3]["Usuarios cubiertos"]
 precio_Bat = datos.iloc[3]["Precio ($)"]
-energia_Bat = datos.iloc[3]["Energía"]
+energia_Bat = datos.iloc[3]["Energía (W)"]
 espacio_Bat = datos.iloc[3]["Espacio (m²)"]
 
 # ==========================
-# BOTÓN
+# BOTONES
 # ==========================
 
-if st.button("🚀 Ejecutar Optimización"):
+colA, colB = st.columns(2)
 
-    # FUNCIÓN OBJETIVO (MAX usuarios cubiertos)
-    c = [
-        -cov_A,
-        -cov_B,
-        -cov_R,
-        -cov_Bat
-    ]
+with colA:
+    ejecutar = st.button("🚀 Ejecutar Optimización")
 
-    # RESTRICCIONES
+with colB:
+    st.button("🔄 Reset valores", on_click=reset_values)
+
+# ==========================
+# RESET LOGIC
+# ==========================
+
+if st.session_state.reset:
+    st.rerun()
+
+# ==========================
+# OPTIMIZACIÓN
+# ==========================
+
+if ejecutar:
+
+    c = [-cov_A, -cov_B, -cov_R, -cov_Bat]
+
     A = [
         [precio_A, precio_B, precio_R, precio_Bat],
         [energia_A, energia_B, energia_R, energia_Bat],
@@ -132,21 +150,8 @@ if st.button("🚀 Ejecutar Optimización"):
         [1, 1, 0, 0]
     ]
 
-    bu = [
-        presupuesto,
-        energia_max,
-        espacio_max,
-        np.inf,
-        np.inf
-    ]
-
-    bl = [
-        -np.inf,
-        -np.inf,
-        -np.inf,
-        min_baterias,
-        min_antenas
-    ]
+    bu = [presupuesto, energia_max, espacio_max, np.inf, np.inf]
+    bl = [-np.inf, -np.inf, -np.inf, min_baterias, min_antenas]
 
     constraints = LinearConstraint(A, bl, bu)
 
@@ -159,15 +164,11 @@ if st.button("🚀 Ejecutar Optimización"):
         integrality=[1, 1, 1, 1]
     )
 
-    st.subheader("📈 Resultados")
+    st.subheader("📊 Resultados")
 
     if res.success:
 
-        A_ant = int(res.x[0])
-        B_ant = int(res.x[1])
-        R_rep = int(res.x[2])
-        Bat = int(res.x[3])
-
+        A_ant, B_ant, R_rep, Bat = map(int, res.x)
         usuarios = int(-res.fun)
 
         costo = precio_A*A_ant + precio_B*B_ant + precio_R*R_rep + precio_Bat*Bat
@@ -177,14 +178,12 @@ if st.button("🚀 Ejecutar Optimización"):
         col1, col2, col3, col4 = st.columns(4)
 
         col1.metric("Usuarios cubiertos", usuarios)
-        col2.metric("Costo total ($)", costo)
-        col3.metric("Energía usada", energia)
-        col4.metric("Espacio usado (m²)", espacio)
-
-        st.subheader("📦 Solución óptima")
+        col2.metric("Costo ($)", costo)
+        col3.metric("Energía (W)", energia)
+        col4.metric("Espacio (m²)", espacio)
 
         st.dataframe(pd.DataFrame({
-            "Equipo": ["Antena A", "Antena B", "Repetidor", "Batería"],
+            "Equipo": ["A", "B", "R", "Batería"],
             "Cantidad": [A_ant, B_ant, R_rep, Bat]
         }), use_container_width=True)
 
@@ -192,7 +191,7 @@ if st.button("🚀 Ejecutar Optimización"):
             "Cantidad": [A_ant, B_ant, R_rep, Bat]
         }, index=["A", "B", "R", "Bat"]))
 
-        st.success("Optimización completada correctamente")
+        st.success("Optimización completada")
 
     else:
-        st.error("No se encontró una solución factible")
+        st.error("No se encontró solución factible")
