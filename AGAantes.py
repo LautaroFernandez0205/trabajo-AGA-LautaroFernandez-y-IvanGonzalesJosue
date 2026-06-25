@@ -3,31 +3,15 @@ import numpy as np
 import pandas as pd
 from scipy.optimize import milp, LinearConstraint, Bounds
 
+# ==========================
+# CONFIG
+# ==========================
+
 st.set_page_config(
     page_title="Optimización Wi-Fi",
     page_icon="📶",
     layout="wide"
 )
-
-st.title("📶 Optimización de Cobertura Wi-Fi del Campus")
-
-st.markdown("""
-### Objetivo
-
-Determinar la cantidad óptima de:
-
-- Antenas Tipo A
-- Antenas Tipo B
-- Repetidores
-- Baterías
-
-para maximizar la cobertura Wi-Fi respetando las restricciones de presupuesto,
-energía, espacio y requisitos mínimos.
-""")
-
-# ==========================
-# ESTILO
-# ==========================
 
 st.markdown("""
 <style>
@@ -36,56 +20,72 @@ st.markdown("""
 }
 
 h1, h2, h3, h4, h5, h6, p, label, div {
-    color: white;
+    color: white !important;
 }
 </style>
 """, unsafe_allow_html=True)
 
+st.title("📶 Optimización de Red Wi-Fi del Campus")
+
 # ==========================
-# PARÁMETROS
+# PROBLEMA
 # ==========================
 
-st.subheader("⚙️ Parámetros del Problema")
+st.subheader("📌 Problema")
+
+st.write("""
+La universidad desea maximizar la cobertura de su red Wi-Fi instalando distintos equipos:
+
+- Antenas Tipo A
+- Antenas Tipo B
+- Repetidores
+- Baterías
+
+Cada equipo tiene un costo, consumo energético, ocupación de espacio y una contribución
+en usuarios cubiertos.
+
+Se busca encontrar la combinación óptima que maximice la cobertura total respetando restricciones.
+""")
+
+# ==========================
+# RESTRICCIONES (EXPLÍCITAS)
+# ==========================
+
+st.subheader("⚙️ Condiciones del problema")
+
+st.markdown("""
+- Presupuesto máximo disponible
+- Energía máxima disponible
+- Espacio máximo disponible
+- Mínimo de baterías obligatorias
+- Mínimo de antenas obligatorias
+- Variables enteras (no se permiten fracciones)
+""")
+
+# ==========================
+# PARÁMETROS + PASO DE INCREMENTO
+# ==========================
+
+st.subheader("⚙️ Parámetros ajustables")
+
+step = st.number_input("🔁 Paso de ajuste (incremento)", value=1, min_value=1)
 
 col1, col2 = st.columns(2)
 
 with col1:
-    presupuesto = st.number_input(
-        "Presupuesto máximo ($)",
-        min_value=0,
-        value=7000
-    )
-
-    energia_max = st.number_input(
-        "Energía máxima",
-        min_value=0,
-        value=220
-    )
-
-    espacio_max = st.number_input(
-        "Espacio máximo",
-        min_value=0,
-        value=300
-    )
+    presupuesto = st.number_input("Presupuesto máximo ($)", value=7000, step=step)
+    energia_max = st.number_input("Energía máxima", value=220, step=step)
+    espacio_max = st.number_input("Espacio máximo", value=300, step=step)
 
 with col2:
-    min_baterias = st.number_input(
-        "Mínimo de baterías",
-        min_value=0,
-        value=5
-    )
-
-    min_antenas = st.number_input(
-        "Mínimo de antenas",
-        min_value=0,
-        value=2
-    )
+    min_baterias = st.number_input("Mínimo de baterías", value=5, step=step)
+    min_antenas = st.number_input("Mínimo de antenas", value=2, step=step)
 
 # ==========================
 # TABLA EDITABLE
 # ==========================
 
-st.subheader("📋 Datos de los Equipos")
+st.subheader("📋 Equipos")
 
 datos = pd.DataFrame({
     "Equipo": [
@@ -100,11 +100,7 @@ datos = pd.DataFrame({
     "Espacio": [10, 12, 1, 1]
 })
 
-datos = st.data_editor(
-    datos,
-    use_container_width=True,
-    num_rows="fixed"
-)
+datos = st.data_editor(datos, use_container_width=True, num_rows="fixed")
 
 cov_A = datos.iloc[0]["Usuarios cubiertos"]
 precio_A = datos.iloc[0]["Precio"]
@@ -132,6 +128,7 @@ espacio_Bat = datos.iloc[3]["Espacio"]
 
 if st.button("🚀 Ejecutar Optimización"):
 
+    # FUNCIÓN OBJETIVO (max cobertura)
     c = [
         -cov_A,
         -cov_B,
@@ -139,12 +136,13 @@ if st.button("🚀 Ejecutar Optimización"):
         -cov_Bat
     ]
 
+    # RESTRICCIONES
     A = [
         [precio_A, precio_B, precio_R, precio_Bat],
         [energia_A, energia_B, energia_R, energia_Bat],
         [espacio_A, espacio_B, espacio_R, espacio_Bat],
-        [0, 0, 0, 1],
-        [1, 1, 0, 0]
+        [0, 0, 0, 1],   # baterías
+        [1, 1, 0, 0]    # antenas
     ]
 
     bu = [
@@ -165,10 +163,7 @@ if st.button("🚀 Ejecutar Optimización"):
 
     constraints = LinearConstraint(A, bl, bu)
 
-    bounds = Bounds(
-        [0, 0, 0, 0],
-        [np.inf, np.inf, np.inf, np.inf]
-    )
+    bounds = Bounds([0, 0, 0, 0], [np.inf, np.inf, np.inf, np.inf])
 
     res = milp(
         c=c,
@@ -177,67 +172,40 @@ if st.button("🚀 Ejecutar Optimización"):
         integrality=[1, 1, 1, 1]
     )
 
-    st.subheader("Resultado")
+    st.subheader("📊 Resultados")
 
     if res.success:
 
-        antena_a = int(res.x[0])
-        antena_b = int(res.x[1])
-        repetidor = int(res.x[2])
-        bateria = int(res.x[3])
+        a = int(res.x[0])
+        b = int(res.x[1])
+        r = int(res.x[2])
+        bat = int(res.x[3])
 
         cobertura = int(-res.fun)
 
-        costo = (
-            precio_A * antena_a +
-            precio_B * antena_b +
-            precio_R * repetidor +
-            precio_Bat * bateria
-        )
-
-        energia = (
-            energia_A * antena_a +
-            energia_B * antena_b +
-            energia_R * repetidor +
-            energia_Bat * bateria
-        )
-
-        espacio = (
-            espacio_A * antena_a +
-            espacio_B * antena_b +
-            espacio_R * repetidor +
-            espacio_Bat * bateria
-        )
+        costo = precio_A*a + precio_B*b + precio_R*r + precio_Bat*bat
+        energia = energia_A*a + energia_B*b + energia_R*r + energia_Bat*bat
+        espacio = espacio_A*a + espacio_B*b + espacio_R*r + espacio_Bat*bat
 
         col1, col2, col3, col4 = st.columns(4)
 
         col1.metric("Usuarios cubiertos", cobertura)
-        col2.metric("Costo utilizado", f"${costo}")
-        col3.metric("Energía utilizada", energia)
-        col4.metric("Espacio utilizado", espacio)
+        col2.metric("Costo total", f"${costo}")
+        col3.metric("Energía usada", energia)
+        col4.metric("Espacio usado", espacio)
 
-        resultados = pd.DataFrame({
-            "Equipo": [
-                "Antena Tipo A",
-                "Antena Tipo B",
-                "Repetidor",
-                "Batería"
-            ],
-            "Cantidad óptima": [
-                antena_a,
-                antena_b,
-                repetidor,
-                bateria
-            ]
-        })
+        st.subheader("📦 Solución óptima")
 
-        st.subheader("Cantidad óptima de equipos")
-        st.dataframe(resultados, use_container_width=True)
+        st.dataframe(pd.DataFrame({
+            "Equipo": ["Antena A", "Antena B", "Repetidor", "Batería"],
+            "Cantidad": [a, b, r, bat]
+        }), use_container_width=True)
 
-        st.subheader("Gráfico")
-        st.bar_chart(resultados.set_index("Equipo"))
+        st.bar_chart(pd.DataFrame({
+            "Cantidad": [a, b, r, bat]
+        }, index=["A", "B", "R", "Bat"]))
 
         st.success("Optimización completada correctamente")
 
     else:
-        st.error("No existe una solución factible para los parámetros ingresados.")
+        st.error("No se encontró una solución factible")
