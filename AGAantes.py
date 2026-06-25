@@ -4,7 +4,7 @@ import pandas as pd
 from scipy.optimize import milp, LinearConstraint, Bounds
 
 # ==========================
-# CONFIGURACIÓN
+# CONFIG
 # ==========================
 
 st.set_page_config(
@@ -34,116 +34,90 @@ st.title("📶 Optimización de Red Wi-Fi del Campus")
 st.subheader("📌 Enunciado del problema")
 
 st.write("""
-La universidad busca optimizar la instalación de infraestructura Wi-Fi en el campus
-con el objetivo de maximizar la cantidad de usuarios cubiertos.
+La universidad busca maximizar la cobertura de su red Wi-Fi mediante la instalación de:
 
-Se dispone de distintos equipos de red:
+- Antenas Tipo A  
+- Antenas Tipo B  
+- Repetidores  
+- Baterías  
 
-- Antenas Tipo A
-- Antenas Tipo B
-- Repetidores
-- Baterías
-
-Cada equipo tiene un costo, consumo energético, ocupación de espacio físico
-y contribuye a la cobertura total del sistema.
+Cada equipo consume recursos y aporta cobertura medida en usuarios cubiertos.
 """)
 
 # ==========================
-# RESTRICCIONES (CON NÚMEROS)
+# RESTRICCIONES
 # ==========================
 
-st.subheader("⚙️ Restricciones del problema")
+st.subheader("⚙️ Restricciones del sistema")
 
 st.markdown("""
-El sistema debe respetar las siguientes restricciones:
-
-- 💰 Presupuesto máximo: **$7000**
-- ⚡ Energía máxima disponible: **220 W**
-- 📦 Espacio máximo disponible: **300 m²**
-- 🔋 Mínimo de baterías: **5**
-- 📡 Mínimo de antenas (A + B): **2**
-- 🔢 Variables enteras (no se permiten fracciones)
+- Presupuesto máximo: **$7000**
+- Energía máxima: **220 W**
+- Espacio máximo: **300 m²**
+- Mínimo de baterías: **5**
+- Mínimo de antenas: **2**
+- Restricción repetidores (según consigna): **-4A -4B + R ≤ 0**
+- Variables enteras
 """)
-
-# ==========================
-# PARÁMETROS
-# ==========================
-
-st.subheader("⚙️ Parámetros ajustables")
-
-col1, col2 = st.columns(2)
-
-with col1:
-    presupuesto = st.number_input("Presupuesto ($)", value=7000)
-    energia_max = st.number_input("Energía máxima (W)", value=220)
-    espacio_max = st.number_input("Espacio máximo (m²)", value=300)
-
-with col2:
-    min_baterias = st.number_input("Mínimo baterías", value=5)
-    min_antenas = st.number_input("Mínimo antenas", value=2)
 
 # ==========================
 # DATOS BASE
 # ==========================
 
-st.subheader("📋 Equipos disponibles")
+st.subheader("📋 Equipos")
 
-default_data = pd.DataFrame({
-    "Equipo": [
-        "Antena Tipo A",
-        "Antena Tipo B",
-        "Repetidor",
-        "Batería"
-    ],
+datos_base = pd.DataFrame({
+    "Equipo": ["Antena A", "Antena B", "Repetidor", "Batería"],
     "Usuarios cubiertos": [120, 200, 80, 20],
-    "Precio ($)": [300, 500, 150, 100],
+    "Precio": [300, 500, 150, 100],
     "Energía (W)": [8, 15, 4, 2],
     "Espacio (m²)": [10, 12, 1, 1]
 })
 
-datos = st.data_editor(default_data, use_container_width=True, num_rows="fixed")
+datos = st.data_editor(datos_base, use_container_width=True, num_rows="fixed")
+
+# ==========================
+# PARÁMETROS
+# ==========================
+
+col1, col2 = st.columns(2)
+
+presupuesto = col1.number_input("Presupuesto ($)", value=7000)
+energia_max = col1.number_input("Energía (W)", value=220)
+espacio_max = col1.number_input("Espacio (m²)", value=300)
+
+min_baterias = col2.number_input("Mínimo baterías", value=5)
+min_antenas = col2.number_input("Mínimo antenas", value=2)
 
 # ==========================
 # EXTRACCIÓN
 # ==========================
 
 cov_A = datos.iloc[0]["Usuarios cubiertos"]
-precio_A = datos.iloc[0]["Precio ($)"]
-energia_A = datos.iloc[0]["Energía (W)"]
-espacio_A = datos.iloc[0]["Espacio (m²)"]
-
 cov_B = datos.iloc[1]["Usuarios cubiertos"]
-precio_B = datos.iloc[1]["Precio ($)"]
-energia_B = datos.iloc[1]["Energía (W)"]
-espacio_B = datos.iloc[1]["Espacio (m²)"]
-
 cov_R = datos.iloc[2]["Usuarios cubiertos"]
-precio_R = datos.iloc[2]["Precio ($)"]
-energia_R = datos.iloc[2]["Energía (W)"]
-espacio_R = datos.iloc[2]["Espacio (m²)"]
-
 cov_Bat = datos.iloc[3]["Usuarios cubiertos"]
-precio_Bat = datos.iloc[3]["Precio ($)"]
+
+precio_A = datos.iloc[0]["Precio"]
+precio_B = datos.iloc[1]["Precio"]
+precio_R = datos.iloc[2]["Precio"]
+precio_Bat = datos.iloc[3]["Precio"]
+
+energia_A = datos.iloc[0]["Energía (W)"]
+energia_B = datos.iloc[1]["Energía (W)"]
+energia_R = datos.iloc[2]["Energía (W)"]
 energia_Bat = datos.iloc[3]["Energía (W)"]
+
+espacio_A = datos.iloc[0]["Espacio (m²)"]
+espacio_B = datos.iloc[1]["Espacio (m²)"]
+espacio_R = datos.iloc[2]["Espacio (m²)"]
 espacio_Bat = datos.iloc[3]["Espacio (m²)"]
 
 # ==========================
-# BOTONES
+# BOTÓN
 # ==========================
 
-colA, colB = st.columns(2)
-
-ejecutar = colA.button("🚀 Ejecutar Optimización")
-reset = colB.button("🔄 Reset")
-
-if reset:
-    st.rerun()
-
-# ==========================
-# MODELO
-# ==========================
-
-if ejecutar:
+if st.button("🚀 Ejecutar Optimización"):
 
     c = [-cov_A, -cov_B, -cov_R, -cov_Bat]
 
@@ -152,11 +126,27 @@ if ejecutar:
         [energia_A, energia_B, energia_R, energia_Bat],
         [espacio_A, espacio_B, espacio_R, espacio_Bat],
         [0, 0, 0, 1],
-        [1, 1, 0, 0]
+        [1, 1, 0, 0],
+        [-4, -4, 1, 0]   # TU RESTRICCIÓN TAL CUAL LA PUSISTE
     ]
 
-    bu = [presupuesto, energia_max, espacio_max, np.inf, np.inf]
-    bl = [-np.inf, -np.inf, -np.inf, min_baterias, min_antenas]
+    bu = [
+        presupuesto,
+        energia_max,
+        espacio_max,
+        np.inf,
+        np.inf,
+        0
+    ]
+
+    bl = [
+        -np.inf,
+        -np.inf,
+        -np.inf,
+        min_baterias,
+        min_antenas,
+        -np.inf
+    ]
 
     constraints = LinearConstraint(A, bl, bu)
 
@@ -187,18 +177,7 @@ if ejecutar:
         col3.metric("Energía (W)", energia)
         col4.metric("Espacio (m²)", espacio)
 
-        st.subheader("📦 Solución óptima")
-
-        st.dataframe(pd.DataFrame({
-            "Equipo": ["Antena A", "Antena B", "Repetidor", "Batería"],
-            "Cantidad": [A_ant, B_ant, R_rep, Bat]
-        }), use_container_width=True)
-
-        st.bar_chart(pd.DataFrame({
-            "Cantidad": [A_ant, B_ant, R_rep, Bat]
-        }, index=["A", "B", "R", "Bat"]))
-
         st.success("Optimización completada correctamente")
 
     else:
-        st.error("No se encontró solución factible con los parámetros actuales.")
+        st.error("No se encontró solución factible")
