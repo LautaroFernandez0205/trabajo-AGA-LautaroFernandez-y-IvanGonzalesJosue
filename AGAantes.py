@@ -25,156 +25,224 @@ para maximizar la cobertura Wi-Fi respetando las restricciones de presupuesto,
 energía, espacio y requisitos mínimos.
 """)
 
-# ------------------------
-# Datos del problema
-# ------------------------
+# ==========================
+# SIDEBAR
+# ==========================
+
+st.sidebar.header("Restricciones")
+
+presupuesto = st.sidebar.number_input(
+    "Presupuesto máximo ($)",
+    min_value=0,
+    value=7000
+)
+
+energia_max = st.sidebar.number_input(
+    "Energía máxima",
+    min_value=0,
+    value=220
+)
+
+espacio_max = st.sidebar.number_input(
+    "Espacio máximo",
+    min_value=0,
+    value=300
+)
+
+min_baterias = st.sidebar.number_input(
+    "Mínimo de baterías",
+    min_value=0,
+    value=5
+)
+
+min_antenas = st.sidebar.number_input(
+    "Mínimo de antenas",
+    min_value=0,
+    value=2
+)
+
+st.sidebar.header("Antena Tipo A")
+
+cov_A = st.sidebar.number_input("Cobertura A", value=120)
+precio_A = st.sidebar.number_input("Precio A", value=300)
+energia_A = st.sidebar.number_input("Energía A", value=8)
+espacio_A = st.sidebar.number_input("Espacio A", value=10)
+
+st.sidebar.header("Antena Tipo B")
+
+cov_B = st.sidebar.number_input("Cobertura B", value=200)
+precio_B = st.sidebar.number_input("Precio B", value=500)
+energia_B = st.sidebar.number_input("Energía B", value=15)
+espacio_B = st.sidebar.number_input("Espacio B", value=12)
+
+st.sidebar.header("Repetidor")
+
+cov_R = st.sidebar.number_input("Cobertura Repetidor", value=80)
+precio_R = st.sidebar.number_input("Precio Repetidor", value=150)
+energia_R = st.sidebar.number_input("Energía Repetidor", value=4)
+espacio_R = st.sidebar.number_input("Espacio Repetidor", value=1)
+
+st.sidebar.header("Batería")
+
+cov_Bat = st.sidebar.number_input("Cobertura Batería", value=20)
+precio_Bat = st.sidebar.number_input("Precio Batería", value=100)
+energia_Bat = st.sidebar.number_input("Energía Batería", value=2)
+espacio_Bat = st.sidebar.number_input("Espacio Batería", value=1)
+
+# ==========================
+# TABLA DE DATOS
+# ==========================
 
 datos = pd.DataFrame({
-    "Equipo": ["Antena Tipo A", "Antena Tipo B", "Repetidor", "Batería"],
-    "Cobertura": [120, 200, 80, 20],
-    "Precio": [300, 500, 150, 100],
-    "Energía": [8, 15, 4, 2],
-    "Espacio": [10, 12, 1, 1]
+    "Equipo": [
+        "Antena Tipo A",
+        "Antena Tipo B",
+        "Repetidor",
+        "Batería"
+    ],
+    "Cobertura": [
+        cov_A,
+        cov_B,
+        cov_R,
+        cov_Bat
+    ],
+    "Precio": [
+        precio_A,
+        precio_B,
+        precio_R,
+        precio_Bat
+    ],
+    "Energía": [
+        energia_A,
+        energia_B,
+        energia_R,
+        energia_Bat
+    ],
+    "Espacio": [
+        espacio_A,
+        espacio_B,
+        espacio_R,
+        espacio_Bat
+    ]
 })
 
-st.subheader("Datos del problema")
+st.subheader("Datos actuales")
 st.dataframe(datos, use_container_width=True)
 
-# ------------------------
-# Modelo MILP
-# ------------------------
+# ==========================
+# BOTÓN
+# ==========================
 
-c = [-120, -200, -80, -20]
+if st.button("🚀 Ejecutar Optimización"):
 
-A = [
-    [300, 500, 150, 100],  # presupuesto
-    [8, 15, 4, 2],         # energía
-    [10, 12, 1, 1],        # espacio
-    [0, 0, 0, 1],          # mínimo 5 baterías
-    [1, 1, 0, 0]           # mínimo 2 antenas
-]
+    c = [
+        -cov_A,
+        -cov_B,
+        -cov_R,
+        -cov_Bat
+    ]
 
-bu = [7000, 220, 300, np.inf, np.inf]
-bl = [-np.inf, -np.inf, -np.inf, 5, 2]
+    A = [
+        [precio_A, precio_B, precio_R, precio_Bat],
+        [energia_A, energia_B, energia_R, energia_Bat],
+        [espacio_A, espacio_B, espacio_R, espacio_Bat],
+        [0, 0, 0, 1],
+        [1, 1, 0, 0]
+    ]
 
-constraints = LinearConstraint(A, bl, bu)
+    bu = [
+        presupuesto,
+        energia_max,
+        espacio_max,
+        np.inf,
+        np.inf
+    ]
 
-bounds = Bounds(
-    [0, 0, 0, 0],
-    [np.inf, np.inf, np.inf, np.inf]
-)
+    bl = [
+        -np.inf,
+        -np.inf,
+        -np.inf,
+        min_baterias,
+        min_antenas
+    ]
 
-res = milp(
-    c=c,
-    constraints=constraints,
-    bounds=bounds,
-    integrality=[1, 1, 1, 1]
-)
+    constraints = LinearConstraint(A, bl, bu)
 
-# ------------------------
-# Resultados
-# ------------------------
-
-st.subheader("Resultado de la Optimización")
-
-if res.success:
-
-    antena_a = int(res.x[0])
-    antena_b = int(res.x[1])
-    repetidor = int(res.x[2])
-    bateria = int(res.x[3])
-
-    cobertura = int(-res.fun)
-
-    costo = (
-        300 * antena_a +
-        500 * antena_b +
-        150 * repetidor +
-        100 * bateria
+    bounds = Bounds(
+        [0, 0, 0, 0],
+        [np.inf, np.inf, np.inf, np.inf]
     )
 
-    energia = (
-        8 * antena_a +
-        15 * antena_b +
-        4 * repetidor +
-        2 * bateria
+    res = milp(
+        c=c,
+        constraints=constraints,
+        bounds=bounds,
+        integrality=[1, 1, 1, 1]
     )
 
-    espacio = (
-        10 * antena_a +
-        12 * antena_b +
-        repetidor +
-        bateria
-    )
+    st.subheader("Resultado")
 
-    col1, col2, col3, col4 = st.columns(4)
+    if res.success:
 
-    col1.metric("Cobertura Máxima", cobertura)
-    col2.metric("Costo Utilizado", f"${costo}")
-    col3.metric("Energía Utilizada", energia)
-    col4.metric("Espacio Utilizado", espacio)
+        antena_a = int(res.x[0])
+        antena_b = int(res.x[1])
+        repetidor = int(res.x[2])
+        bateria = int(res.x[3])
 
-    resultados = pd.DataFrame({
-        "Equipo": [
-            "Antena Tipo A",
-            "Antena Tipo B",
-            "Repetidor",
-            "Batería"
-        ],
-        "Cantidad Óptima": [
-            antena_a,
-            antena_b,
-            repetidor,
-            bateria
-        ]
-    })
+        cobertura = int(-res.fun)
 
-    st.subheader("Cantidad Óptima de Equipos")
-    st.dataframe(resultados, use_container_width=True)
+        costo = (
+            precio_A * antena_a +
+            precio_B * antena_b +
+            precio_R * repetidor +
+            precio_Bat * bateria
+        )
 
-    st.subheader("Gráfico")
-    st.bar_chart(resultados.set_index("Equipo"))
+        energia = (
+            energia_A * antena_a +
+            energia_B * antena_b +
+            energia_R * repetidor +
+            energia_Bat * bateria
+        )
 
-    st.success(res.message)
+        espacio = (
+            espacio_A * antena_a +
+            espacio_B * antena_b +
+            espacio_R * repetidor +
+            espacio_Bat * bateria
+        )
 
-else:
-    st.error("No se encontró una solución factible.")
+        col1, col2, col3, col4 = st.columns(4)
 
-# ------------------------
-# Modelo matemático
-# ------------------------
+        col1.metric("Cobertura Máxima", cobertura)
+        col2.metric("Costo Utilizado", f"${costo}")
+        col3.metric("Energía Utilizada", energia)
+        col4.metric("Espacio Utilizado", espacio)
 
-st.subheader("Modelo Matemático")
+        resultados = pd.DataFrame({
+            "Equipo": [
+                "Antena Tipo A",
+                "Antena Tipo B",
+                "Repetidor",
+                "Batería"
+            ],
+            "Cantidad Óptima": [
+                antena_a,
+                antena_b,
+                repetidor,
+                bateria
+            ]
+        })
 
-st.latex(
-    r"Max \; Z = 120A + 200B + 80R + 20Bat"
-)
+        st.subheader("Cantidad Óptima de Equipos")
+        st.dataframe(resultados, use_container_width=True)
 
-st.markdown("Sujeto a:")
+        st.subheader("Gráfico")
+        st.bar_chart(
+            resultados.set_index("Equipo")
+        )
 
-st.latex(
-    r"300A + 500B + 150R + 100Bat \leq 7000"
-)
+        st.success("Optimización completada correctamente")
 
-st.latex(
-    r"8A + 15B + 4R + 2Bat \leq 220"
-)
-
-st.latex(
-    r"10A + 12B + R + Bat \leq 300"
-)
-
-st.latex(
-    r"Bat \geq 5"
-)
-
-st.latex(
-    r"A + B \geq 2"
-)
-
-st.latex(
-    r"A,B,R,Bat \in \mathbb{Z}_{\geq 0}"
-)
-st.latex(
-r"A,B,R,Bat \in \mathbb{Z}_{\geq 0}"
-)
+    else:
+        st.error("No existe una solución factible para los parámetros ingresados.")
