@@ -26,72 +26,66 @@ energía, espacio y requisitos mínimos.
 """)
 
 # ==========================
-# SIDEBAR
+# ESTILO
 # ==========================
 
-st.sidebar.header("Restricciones")
+st.markdown("""
+<style>
+.stApp {
+    background-color: #0A1931;
+}
 
-presupuesto = st.sidebar.number_input(
-    "Presupuesto máximo ($)",
-    min_value=0,
-    value=7000
-)
-
-energia_max = st.sidebar.number_input(
-    "Energía máxima",
-    min_value=0,
-    value=220
-)
-
-espacio_max = st.sidebar.number_input(
-    "Espacio máximo",
-    min_value=0,
-    value=300
-)
-
-min_baterias = st.sidebar.number_input(
-    "Mínimo de baterías",
-    min_value=0,
-    value=5
-)
-
-min_antenas = st.sidebar.number_input(
-    "Mínimo de antenas",
-    min_value=0,
-    value=2
-)
-
-st.sidebar.header("Antena Tipo A")
-
-cov_A = st.sidebar.number_input("Cobertura A", value=120)
-precio_A = st.sidebar.number_input("Precio A", value=300)
-energia_A = st.sidebar.number_input("Energía A", value=8)
-espacio_A = st.sidebar.number_input("Espacio A", value=10)
-
-st.sidebar.header("Antena Tipo B")
-
-cov_B = st.sidebar.number_input("Cobertura B", value=200)
-precio_B = st.sidebar.number_input("Precio B", value=500)
-energia_B = st.sidebar.number_input("Energía B", value=15)
-espacio_B = st.sidebar.number_input("Espacio B", value=12)
-
-st.sidebar.header("Repetidor")
-
-cov_R = st.sidebar.number_input("Cobertura Repetidor", value=80)
-precio_R = st.sidebar.number_input("Precio Repetidor", value=150)
-energia_R = st.sidebar.number_input("Energía Repetidor", value=4)
-espacio_R = st.sidebar.number_input("Espacio Repetidor", value=1)
-
-st.sidebar.header("Batería")
-
-cov_Bat = st.sidebar.number_input("Cobertura Batería", value=20)
-precio_Bat = st.sidebar.number_input("Precio Batería", value=100)
-energia_Bat = st.sidebar.number_input("Energía Batería", value=2)
-espacio_Bat = st.sidebar.number_input("Espacio Batería", value=1)
+h1, h2, h3, h4, h5, h6, p, label, div {
+    color: white;
+}
+</style>
+""", unsafe_allow_html=True)
 
 # ==========================
-# TABLA DE DATOS
+# PARÁMETROS
 # ==========================
+
+st.subheader("⚙️ Parámetros del Problema")
+
+col1, col2 = st.columns(2)
+
+with col1:
+    presupuesto = st.number_input(
+        "Presupuesto máximo ($)",
+        min_value=0,
+        value=7000
+    )
+
+    energia_max = st.number_input(
+        "Energía máxima",
+        min_value=0,
+        value=220
+    )
+
+    espacio_max = st.number_input(
+        "Espacio máximo",
+        min_value=0,
+        value=300
+    )
+
+with col2:
+    min_baterias = st.number_input(
+        "Mínimo de baterías",
+        min_value=0,
+        value=5
+    )
+
+    min_antenas = st.number_input(
+        "Mínimo de antenas",
+        min_value=0,
+        value=2
+    )
+
+# ==========================
+# TABLA EDITABLE
+# ==========================
+
+st.subheader("📋 Datos de los Equipos")
 
 datos = pd.DataFrame({
     "Equipo": [
@@ -100,34 +94,37 @@ datos = pd.DataFrame({
         "Repetidor",
         "Batería"
     ],
-    "Cobertura": [
-        cov_A,
-        cov_B,
-        cov_R,
-        cov_Bat
-    ],
-    "Precio": [
-        precio_A,
-        precio_B,
-        precio_R,
-        precio_Bat
-    ],
-    "Energía": [
-        energia_A,
-        energia_B,
-        energia_R,
-        energia_Bat
-    ],
-    "Espacio": [
-        espacio_A,
-        espacio_B,
-        espacio_R,
-        espacio_Bat
-    ]
+    "Cobertura": [120, 200, 80, 20],
+    "Precio": [300, 500, 150, 100],
+    "Energía": [8, 15, 4, 2],
+    "Espacio": [10, 12, 1, 1]
 })
 
-st.subheader("Datos actuales")
-st.dataframe(datos, use_container_width=True)
+datos = st.data_editor(
+    datos,
+    use_container_width=True,
+    num_rows="fixed"
+)
+
+cov_A = datos.iloc[0]["Cobertura"]
+precio_A = datos.iloc[0]["Precio"]
+energia_A = datos.iloc[0]["Energía"]
+espacio_A = datos.iloc[0]["Espacio"]
+
+cov_B = datos.iloc[1]["Cobertura"]
+precio_B = datos.iloc[1]["Precio"]
+energia_B = datos.iloc[1]["Energía"]
+espacio_B = datos.iloc[1]["Espacio"]
+
+cov_R = datos.iloc[2]["Cobertura"]
+precio_R = datos.iloc[2]["Precio"]
+energia_R = datos.iloc[2]["Energía"]
+espacio_R = datos.iloc[2]["Espacio"]
+
+cov_Bat = datos.iloc[3]["Cobertura"]
+precio_Bat = datos.iloc[3]["Precio"]
+energia_Bat = datos.iloc[3]["Energía"]
+espacio_Bat = datos.iloc[3]["Espacio"]
 
 # ==========================
 # BOTÓN
