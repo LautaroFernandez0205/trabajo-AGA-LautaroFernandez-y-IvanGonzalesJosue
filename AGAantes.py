@@ -85,8 +85,6 @@ integrality=[1, 1, 1, 1]
 st.subheader("Resultado de la Optimización")
 
 if res.success:
-
-```
 antena_a = int(res.x[0])
 antena_b = int(res.x[1])
 repetidor = int(res.x[2])
