@@ -175,8 +175,9 @@ if st.button("🚀 Ejecutar Optimización"):
 
     if res.success:
 
-        A_ant, B_ant, R_rep, Bat = map(int, res.x)
-        usuarios = int(-res.fun)
+        # CORRECCIÓN CLAVE: Usar round() antes de int()
+        A_ant, B_ant, R_rep, Bat = [int(round(val)) for val in res.x]
+        usuarios = int(round(-res.fun))
 
         costo = precio_A*A_ant + precio_B*B_ant + precio_R*R_rep + precio_Bat*Bat
         energia = energia_A*A_ant + energia_B*B_ant + energia_R*R_rep + energia_Bat*Bat
